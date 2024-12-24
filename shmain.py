@@ -2,6 +2,26 @@ import tkinter as tk
 from tkinter import messagebox
 import subprocess
 
+tooltip = None
+
+def show_tooltip(event, text):
+    global tooltip
+    tooltip = tk.Toplevel(root)
+    tooltip.overrideredirect(True)
+    tooltip.geometry(f"+{event.x_root+10}+{event.y_root+10}")
+    tk.Label(tooltip, text=text, bg="lightyellow", fg="black", relief="solid", borderwidth=1).pack()
+
+def move_tooltip(event):
+    if tooltip:
+        tooltip.geometry(f"+{event.x_root+10}+{event.y_root+10}")
+
+def hide_tooltip(event):
+    global tooltip
+    if tooltip:
+        tooltip.destroy()
+        tooltip = None
+
+
 def run_command(command):
     try:
         result = subprocess.run(command, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -39,7 +59,8 @@ def scrcpy_mode(mode):
             "Otg Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "-K", "-M", "--mouse-bind=++++"],
             "Livestream Mode": ["scrcpy", "-m1600", "-b6m", "--max-fps=60", "--audio-dup"],
             "Dex Mode": ["scrcpy", "--new-display=1920x1080/256", "--max-fps=60", "-K", "-m1366", "-b8m", 
-                         "--no-mouse-hover", "--stay-awake", "--mouse-bind=++++"]
+                         "--no-mouse-hover", "--stay-awake", "--mouse-bind=++++"],
+            "Camera": ["scrcpy","--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60"]
         }
         root.destroy()
         run_command(commands[mode])
@@ -220,12 +241,24 @@ def open_scrcpy_modes():
         scrcpy_mode(mode)
 
     scrcpy_win = tk.Toplevel(root)
-    tk.Button(scrcpy_win, text="View Only Mode", command=lambda: mode_command("View Only Mode"), width=30).pack(fill=tk.BOTH)
-    tk.Button(scrcpy_win, text="Control Mode", command=lambda: mode_command("Control Mode"), width=30).pack(fill=tk.BOTH)
-    tk.Button(scrcpy_win, text="Otg Mode", command=lambda: mode_command("Otg Mode"), width=30).pack(fill=tk.BOTH)
-    tk.Button(scrcpy_win, text="Livestream Mode", command=lambda: mode_command("Livestream Mode"), width=30).pack(fill=tk.BOTH)
-    tk.Button(scrcpy_win, text="Dex Mode", command=lambda: mode_command("Dex Mode"), width=30).pack(fill=tk.BOTH)
-    tk.Button(scrcpy_win, text="Tuỳ chỉnh lệnh", command=lambda: [scrcpy_win.destroy(), custom_scrcpy()], width=30).pack(fill=tk.BOTH)
+
+    button_data = [
+        ("View Only Mode", "Chế độ chỉ xem màn hình thiết bị."),
+        ("Control Mode", "Chế độ điều khiển thiết bị."),
+        ("Otg Mode", "Chế độ điều khiển giống OTG cho thiết bị."),
+        ("Livestream Mode", "Chế độ chuyên dành cho chiếu màn hình Livestream."),
+        ("Dex Mode", "Chế độ Desktop màn hình rời, 1 số máy sẽ không hỗ trợ!"),
+        ("Camera", "Chiếu Camera lên PC"),
+        ("Tuỳ chỉnh lệnh", "Cấu hình tuỳ chỉnh.")
+        
+    ]
+
+    for text, tooltip_text in button_data:
+        btn = tk.Button(scrcpy_win, text=text, command=lambda t=text: mode_command(t), width=30)
+        btn.pack(fill=tk.BOTH)
+        btn.bind("<Enter>", lambda e, tt=tooltip_text: show_tooltip(e, tt))
+        btn.bind("<Motion>", move_tooltip)
+        btn.bind("<Leave>", hide_tooltip)
 
 def connectiontest():
     devices_output = run_command(["adb", "devices"])
@@ -292,7 +325,7 @@ tk.Button(root, text="Khởi động lại ADB Server", command=restart_adb_serv
 tk.Button(root, text="Thoát", command=root.quit, width=30).pack(fill=tk.BOTH)
 version_label = tk.Label(root, text="Phiên bản Scrcpy: Đang kiểm tra...")
 version_label.pack()
-version_app = tk.Label(root, text= "Phiên bản app: 1.0.0")
+version_app = tk.Label(root, text= "Phiên bản app: 1.0.1")
 version_app.pack()
 
 update_version_label()
