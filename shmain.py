@@ -57,10 +57,12 @@ def scrcpy_mode(mode):
             "View Only Mode": ["scrcpy", "-m1366", "-b6m", "--max-fps=60", "-n"],
             "Control Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "--mouse-bind=++++"],
             "Otg Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "-K", "-M", "--mouse-bind=++++"],
-            "Livestream Mode": ["scrcpy", "-m1600", "-b6m", "--max-fps=60", "--audio-dup"],
+            "Livestream Mode": ["scrcpy", "-m1600", "-b6m", "--max-fps=60", "--audio-dup", "--video-buffer=70", "--audio-buffer=70"],
             "Dex Mode": ["scrcpy", "--new-display=1920x1080/256", "--max-fps=60", "-K", "-m1366", "-b8m", 
                          "--no-mouse-hover", "--stay-awake", "--mouse-bind=++++"],
-            "Camera": ["scrcpy","--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60"]
+            "Camera": ["scrcpy","--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60", "--video-buffer=70", "--audio-buffer=70"],
+            "Camera NoMic": ["scrcpy","--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60", "--video-buffer=70", "--no-audio"],
+            "Camera NoDelay": ["scrcpy","--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60"]
         }
         root.destroy()
         run_command(commands[mode])
@@ -249,6 +251,8 @@ def open_scrcpy_modes():
         ("Livestream Mode", "Chế độ chuyên dành cho chiếu màn hình Livestream."),
         ("Dex Mode", "Chế độ Desktop màn hình rời, 1 số máy sẽ không hỗ trợ!"),
         ("Camera", "Chiếu Camera lên PC"),
+        ("Camera NoMic", "Chiếu Camera lên PC (chỉ hình ảnh)"),
+        ("Camera NoDelay", "Chiếu Camera lên PC (không delay)"),
         ("Tuỳ chỉnh lệnh", "Cấu hình tuỳ chỉnh.")
         
     ]
@@ -325,7 +329,7 @@ tk.Button(root, text="Khởi động lại ADB Server", command=restart_adb_serv
 tk.Button(root, text="Thoát", command=root.quit, width=30).pack(fill=tk.BOTH)
 version_label = tk.Label(root, text="Phiên bản Scrcpy: Đang kiểm tra...")
 version_label.pack()
-version_app = tk.Label(root, text= "Phiên bản app: 1.0.1")
+version_app = tk.Label(root, text= "Phiên bản app: 1.0.2")
 version_app.pack()
 
 update_version_label()
