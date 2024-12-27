@@ -1,6 +1,8 @@
+APPVERSION = "1.0.3"
 import tkinter as tk
 from tkinter import messagebox
 import subprocess
+from tkinter import Tk, Toplevel, StringVar, OptionMenu, Button, messagebox
 
 tooltip = None
 
@@ -20,7 +22,6 @@ def hide_tooltip(event):
     if tooltip:
         tooltip.destroy()
         tooltip = None
-
 
 def run_command(command):
     try:
@@ -44,30 +45,52 @@ def update_version_label():
                     version = parts[1]
                 break
         version_label.config(text=f"Phiên bản Scrcpy: {version}")
-        
-        if version.startswith("2.6.") and len(version) > 5 and int(version[4:6]) < 6:
-            messagebox.showerror("Lỗi", "Phiên bản scrcpy quá cũ. Vui lòng cập nhật lên ít nhất phiên bản 2.6.0.")
     else:
         version_label.config(text="Phiên bản Scrcpy: Không thể xác định")
 
 def scrcpy_mode(mode):
     connection_status = connectiontest()
+    commands = {
+        "View Only Mode": ["scrcpy", "-m1366", "-b6m", "--max-fps=60", "-n"],
+        "Control Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "--mouse-bind=++++"],
+        "Otg Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "-K", "-M", "--mouse-bind=++++"],
+        "Livestream Mode": ["scrcpy", "-m1600", "-b6m", "--max-fps=60", "--audio-dup", "--video-buffer=70", "--audio-buffer=70"],
+        "Dex Mode": ["scrcpy", "--new-display=1920x1080/256", "--max-fps=60", "-K", "-m1366", "-b8m", "--no-mouse-hover", "--stay-awake", "--mouse-bind=++++"],
+        "Camera": ["scrcpy", "--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60", "--video-buffer=70", "--audio-buffer=70"],
+        "Camera NoMic": ["scrcpy", "--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60", "--video-buffer=70", "--no-audio"],
+        "Camera NoDelay": ["scrcpy", "--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60"],
+        "Audio": ["scrcpy", "--no-video" ,"--no-control","--audio-buffer=500"]
+    }
+
     if connection_status == 1:
-        commands = {
-            "View Only Mode": ["scrcpy", "-m1366", "-b6m", "--max-fps=60", "-n"],
-            "Control Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "--mouse-bind=++++"],
-            "Otg Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "-K", "-M", "--mouse-bind=++++"],
-            "Livestream Mode": ["scrcpy", "-m1600", "-b6m", "--max-fps=60", "--audio-dup", "--video-buffer=70", "--audio-buffer=70"],
-            "Dex Mode": ["scrcpy", "--new-display=1920x1080/256", "--max-fps=60", "-K", "-m1366", "-b8m", 
-                         "--no-mouse-hover", "--stay-awake", "--mouse-bind=++++"],
-            "Camera": ["scrcpy","--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60", "--video-buffer=70", "--audio-buffer=70"],
-            "Camera NoMic": ["scrcpy","--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60", "--video-buffer=70", "--no-audio"],
-            "Camera NoDelay": ["scrcpy","--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60"]
-        }
         root.destroy()
         run_command(commands[mode])
-    elif connection_status == 2:
-        messagebox.showerror("Lỗi", "Có nhiều hơn 1 thiết bị đang kết nối, vui lòng ngắt kết nối.")
+    elif isinstance(connection_status, tuple) and len(connection_status) == 2:
+        device_count, devices = connection_status
+
+        def on_device_select():
+            selected_device = selected_device_var.get()
+            if selected_device:
+                root.destroy()
+                print(selected_device)
+                run_command(" ".join(commands[mode]) + f" -s {selected_device}")
+
+            else:
+                messagebox.showerror("Lỗi", "Vui lòng chọn thiết bị.")
+        device_selection_win = Toplevel()
+        device_selection_win.title("Chọn thiết bị")
+        device_selection_win.geometry("300x150")
+
+        tk.Label(device_selection_win, text="Chọn thiết bị để chạy Scrcpy:").pack(pady=10)
+        selected_device_var = StringVar(device_selection_win)
+        selected_device_var.set(devices[0])
+
+        dropdown = OptionMenu(device_selection_win, selected_device_var, *devices)
+        dropdown.pack(pady=5)
+
+        confirm_button = Button(device_selection_win, text="Chọn", command=on_device_select)
+        confirm_button.pack(pady=10)
+
     else:
         messagebox.showerror("Lỗi", "Chưa kết nối thiết bị.")
 
@@ -239,6 +262,7 @@ def custom_scrcpy():
 
 def open_scrcpy_modes():
     def mode_command(mode):
+        hide_tooltip(mode)
         scrcpy_win.destroy()
         scrcpy_mode(mode)
 
@@ -253,8 +277,8 @@ def open_scrcpy_modes():
         ("Camera", "Chiếu Camera lên PC"),
         ("Camera NoMic", "Chiếu Camera lên PC (chỉ hình ảnh)"),
         ("Camera NoDelay", "Chiếu Camera lên PC (không delay)"),
+        ("Audio","Chế độ tối ưu cho truyền âm thanh (delay 500ms, ko thích hợp cho chơi game)"),
         ("Tuỳ chỉnh lệnh", "Cấu hình tuỳ chỉnh.")
-        
     ]
 
     for text, tooltip_text in button_data:
@@ -270,11 +294,10 @@ def connectiontest():
         devices = [line.split()[0] for line in devices_output.splitlines() if "\tdevice" in line]
         if len(devices) == 1:
             return 1
-        elif len(devices) == 0:
-            return 0
-        elif len(devices) > 1:
-            return 2
-    return False
+        elif len(devices) >= 2:
+            print (devices)
+            return len(devices), devices
+    return 0
 
 def connect_wifi():
     connection_status = connectiontest()
@@ -318,18 +341,31 @@ def show_devices():
     if devices:
         messagebox.showinfo("Thiết bị đã kết nối", devices)
 
+def activeshizuku():
+    connection_status = connectiontest()
+    if connection_status == 1:
+        result = run_command(["adb", "shell", "sh", "/storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh"])
+        if result:
+            messagebox.showinfo("Thành công", "Shizuku đã được kích hoạt thành công.")
+        else:
+            messagebox.showerror("Lỗi", "Không thể kích hoạt Shizuku. Vui lòng kiểm tra lại.")
+    elif connection_status == 2:
+        messagebox.showerror("Lỗi", "Có nhiều hơn 1 thiết bị đang kết nối. Vui lòng ngắt kết nối bớt thiết bị.")
+    else:
+        messagebox.showerror("Lỗi", "Chưa kết nối thiết bị.")
+
 root = tk.Tk()
 root.title("Scrcpy Helper")
-root.geometry("270x175")
-
+root.geometry("270x205")
 tk.Button(root, text="Danh sách thiết bị", command=show_devices, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Kết nối qua Wifi", command=connect_wifi, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Chạy Scrcpy", command=open_scrcpy_modes, width=30).pack(fill=tk.BOTH)
+tk.Button(root, text="Active Shizuku", command=activeshizuku, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Khởi động lại ADB Server", command=restart_adb_server, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Thoát", command=root.quit, width=30).pack(fill=tk.BOTH)
 version_label = tk.Label(root, text="Phiên bản Scrcpy: Đang kiểm tra...")
 version_label.pack()
-version_app = tk.Label(root, text= "Phiên bản app: 1.0.2")
+version_app = tk.Label(root, text= f"Phiên bản app: {APPVERSION}")
 version_app.pack()
 
 update_version_label()
