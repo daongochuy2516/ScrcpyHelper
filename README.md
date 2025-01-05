@@ -2,7 +2,6 @@
 
 ### English Section  
 
-**Version:** 1.0.3  
 **Language:** Currently supports Vietnamese only.  
 **Platform:** Windows (requires scrcpy and ADB installed).  
 
@@ -12,7 +11,6 @@
 
 ### Vietnamese Section  
 
-**Phiên bản:** 1.0.3  
 **Ngôn ngữ:** Tiếng Việt  
 
 Scrcpy Helper là một ứng dụng hỗ trợ sử dụng **scrcpy** trên Windows. Nó cung cấp giao diện người dùng trực quan để quản lý và tùy chỉnh các chế độ sử dụng của scrcpy, bao gồm:  
