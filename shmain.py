@@ -1,8 +1,11 @@
-APPVERSION = "1.0.3"
+APPVERSION = "1.0.5"
+rawver = int(APPVERSION.replace(".",""))
 import tkinter as tk
 from tkinter import messagebox
 import subprocess
 from tkinter import Tk, Toplevel, StringVar, OptionMenu, Button, messagebox
+import requests
+import webbrowser
 
 tooltip = None
 
@@ -343,25 +346,65 @@ def show_devices():
 
 def activeshizuku():
     connection_status = connectiontest()
-    if connection_status == 1:
+    if isinstance(connection_status, tuple) and len(connection_status) == 2:
+        device_count, devices = connection_status
+        for device_id in devices:
+            result = run_command(["adb", "-s", device_id, "shell", "sh", "/storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh"])
+            if result:
+                messagebox.showinfo("Thành công", f"Shizuku đã được kích hoạt thành công trên thiết bị {device_id}.")
+            else:
+                messagebox.showerror("Lỗi", f"Không thể kích hoạt Shizuku trên thiết bị {device_id}. Vui lòng kiểm tra lại.")
+    elif connection_status == 1:
         result = run_command(["adb", "shell", "sh", "/storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh"])
         if result:
             messagebox.showinfo("Thành công", "Shizuku đã được kích hoạt thành công.")
         else:
             messagebox.showerror("Lỗi", "Không thể kích hoạt Shizuku. Vui lòng kiểm tra lại.")
-    elif connection_status == 2:
-        messagebox.showerror("Lỗi", "Có nhiều hơn 1 thiết bị đang kết nối. Vui lòng ngắt kết nối bớt thiết bị.")
     else:
         messagebox.showerror("Lỗi", "Chưa kết nối thiết bị.")
 
+
+def disconnect():
+    run_command(["adb", "disconnect"])
+    messagebox.showinfo("Thành công","Đã ngắt kết nối thiết bị WiFi")
+
+def checkupdate():
+    try:
+        response = requests.get("https://raw.githubusercontent.com/daongochuy2516/ScrcpyHelper/refs/heads/main/lastestver")
+        response.raise_for_status()
+        content = response.text.strip()
+        if content.isdigit():
+            lasver = int(content)
+            if lasver == rawver:
+                messagebox.showinfo("Thông báo", "Bạn đang sử dụng phiên bản mới nhất!")
+            elif lasver > rawver:
+                if messagebox.askokcancel(
+                    "Cập nhật", 
+                    "Phiên bản hiện tại đã cũ, hãy cập nhật để có trải nghiệm tốt hơn! Nhấn OK để cập nhật."
+                ):
+                    webbrowser.open(f"https://github.com/daongochuy2516/ScrcpyHelper/releases/tag/scrcpyhelper{lasver}") 
+            if lasver < rawver:
+                messagebox.showinfo("Thông báo", "Bạn đang sử dụng phiên bản Beta.")
+        else:
+            raise ValueError("Err")
+    except Exception as e:
+        messagebox.showerror("Lỗi", f"Không thể kiểm tra cập nhật. Vui lòng kiểm tra lại kết nối mạng!")
+        return None
+    
+def opengitpage():
+    webbrowser.open("https://github.com/daongochuy2516/ScrcpyHelper")
+
 root = tk.Tk()
 root.title("Scrcpy Helper")
-root.geometry("270x205")
+root.geometry("270x280")
 tk.Button(root, text="Danh sách thiết bị", command=show_devices, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Kết nối qua Wifi", command=connect_wifi, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Chạy Scrcpy", command=open_scrcpy_modes, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Active Shizuku", command=activeshizuku, width=30).pack(fill=tk.BOTH)
+tk.Button(root, text="Ngắt kết nối WiFi", command=disconnect, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Khởi động lại ADB Server", command=restart_adb_server, width=30).pack(fill=tk.BOTH)
+tk.Button(root, text="Check Update", command=checkupdate, width=30).pack(fill=tk.BOTH)
+tk.Button(root, text="GitHub", command=opengitpage, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Thoát", command=root.quit, width=30).pack(fill=tk.BOTH)
 version_label = tk.Label(root, text="Phiên bản Scrcpy: Đang kiểm tra...")
 version_label.pack()
