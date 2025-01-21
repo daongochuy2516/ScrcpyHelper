@@ -1,4 +1,4 @@
-APPVERSION = "1.0.5"
+APPVERSION = "1.0.6"
 rawver = int(APPVERSION.replace(".",""))
 import tkinter as tk
 from tkinter import messagebox
@@ -6,8 +6,22 @@ import subprocess
 from tkinter import Tk, Toplevel, StringVar, OptionMenu, Button, messagebox
 import requests
 import webbrowser
+from screeninfo import get_monitors
 
 tooltip = None
+
+
+def getres():
+    main_monitor = get_monitors()[0]
+    if main_monitor.width >= 1920: 
+        width = 1920
+    width = main_monitor.width
+
+def setres(opt):
+    if opt ==1 :
+        run_command(["adb", "shell", "wm", "size", "1080x1920"])
+    if opt == 2:
+        run_command(["adb", "shell", "wm", "size", "reset"])
 
 def show_tooltip(event, text):
     global tooltip
@@ -54,20 +68,29 @@ def update_version_label():
 def scrcpy_mode(mode):
     connection_status = connectiontest()
     commands = {
-        "View Only Mode": ["scrcpy", "-m1366", "-b6m", "--max-fps=60", "-n"],
-        "Control Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "--mouse-bind=++++"],
-        "Otg Mode": ["scrcpy", "-m1366", "-b5m", "--max-fps=60", "-K", "-M", "--mouse-bind=++++"],
-        "Livestream Mode": ["scrcpy", "-m1600", "-b6m", "--max-fps=60", "--audio-dup", "--video-buffer=70", "--audio-buffer=70"],
+        "View Only Mode": ["scrcpy", "-m1600", "-b6m", "--max-fps=60", "-n"],
+        "Control Mode": ["scrcpy", "-m1600", "-b5m", "--max-fps=60", "--mouse-bind=++++"],
+        "Otg Mode": ["scrcpy", "-m1600", "-b5m", "--max-fps=60", "-K", "-M", "--mouse-bind=++++"],
         "Dex Mode": ["scrcpy", "--new-display=1920x1080/256", "--max-fps=60", "-K", "-m1366", "-b8m", "--no-mouse-hover", "--stay-awake", "--mouse-bind=++++"],
+        "Livestream Mode": ["scrcpy", "-m1600", "-b6m", "--max-fps=60", "--audio-dup", "--video-buffer=70", "--audio-buffer=70"],
+        "Livestream Mode+": ["scrcpy", "-m1920", "-b10m", "--max-fps=60", "--audio-dup", "--video-buffer=70", "--audio-buffer=70"],
         "Camera": ["scrcpy", "--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60", "--video-buffer=70", "--audio-buffer=70"],
         "Camera NoMic": ["scrcpy", "--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60", "--video-buffer=70", "--no-audio"],
         "Camera NoDelay": ["scrcpy", "--video-source=camera", "--camera-id=0", "--camera-size=1920x1080", "--camera-fps=60"],
-        "Audio": ["scrcpy", "--no-video" ,"--no-control","--audio-buffer=500"]
+        "Audio": ["scrcpy", "--no-video" ,"--no-control","--audio-buffer=500"],
+        "Full Size": []  # Chế độ mới
     }
+
+    if mode == "Full Size":
+        width = getres()
+        # Tạo lệnh chế độ Full Size
+        commands["Full Size"] = [f"scrcpy", f"-m{width}", "-b6m", "--max-fps=60", "--mouse-bind=++++" ]
 
     if connection_status == 1:
         root.destroy()
+        if mode == "Full Size": setres(1)
         run_command(commands[mode])
+        if mode == "Full Size": setres(2)
     elif isinstance(connection_status, tuple) and len(connection_status) == 2:
         device_count, devices = connection_status
 
@@ -75,11 +98,13 @@ def scrcpy_mode(mode):
             selected_device = selected_device_var.get()
             if selected_device:
                 root.destroy()
-                print(selected_device)
+                if mode == "Full Size": setres(1)
                 run_command(" ".join(commands[mode]) + f" -s {selected_device}")
-
+                if mode == "Full Size": setres(2)
             else:
                 messagebox.showerror("Lỗi", "Vui lòng chọn thiết bị.")
+        
+        # GUI chọn thiết bị
         device_selection_win = Toplevel()
         device_selection_win.title("Chọn thiết bị")
         device_selection_win.geometry("300x150")
@@ -93,7 +118,6 @@ def scrcpy_mode(mode):
 
         confirm_button = Button(device_selection_win, text="Chọn", command=on_device_select)
         confirm_button.pack(pady=10)
-
     else:
         messagebox.showerror("Lỗi", "Chưa kết nối thiết bị.")
 
@@ -275,8 +299,10 @@ def open_scrcpy_modes():
         ("View Only Mode", "Chế độ chỉ xem màn hình thiết bị."),
         ("Control Mode", "Chế độ điều khiển thiết bị."),
         ("Otg Mode", "Chế độ điều khiển giống OTG cho thiết bị."),
-        ("Livestream Mode", "Chế độ chuyên dành cho chiếu màn hình Livestream."),
         ("Dex Mode", "Chế độ Desktop màn hình rời, 1 số máy sẽ không hỗ trợ!"),
+        ("Full Size","Chế độ chiếu toàn màn hình 16:9 (Lưu ý: tắt app trước khi rút dây khi dùng chế độ này)"),
+        ("Livestream Mode", "Chế độ chuyên dành cho chiếu màn hình Livestream."),
+        ("Livestream Mode+", "Chế độ chuyên dành cho chiếu màn hình Livestream, yêu cầu kết nối ổn định, (1080p60 10k)"),
         ("Camera", "Chiếu Camera lên PC"),
         ("Camera NoMic", "Chiếu Camera lên PC (chỉ hình ảnh)"),
         ("Camera NoDelay", "Chiếu Camera lên PC (không delay)"),
@@ -398,10 +424,10 @@ root = tk.Tk()
 root.title("Scrcpy Helper")
 root.geometry("270x280")
 tk.Button(root, text="Danh sách thiết bị", command=show_devices, width=30).pack(fill=tk.BOTH)
-tk.Button(root, text="Kết nối qua Wifi", command=connect_wifi, width=30).pack(fill=tk.BOTH)
+tk.Button(root, text="Kết nối qua WiFi", command=connect_wifi, width=30).pack(fill=tk.BOTH)
+tk.Button(root, text="Ngắt kết nối WiFi", command=disconnect, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Chạy Scrcpy", command=open_scrcpy_modes, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Active Shizuku", command=activeshizuku, width=30).pack(fill=tk.BOTH)
-tk.Button(root, text="Ngắt kết nối WiFi", command=disconnect, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Khởi động lại ADB Server", command=restart_adb_server, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="Check Update", command=checkupdate, width=30).pack(fill=tk.BOTH)
 tk.Button(root, text="GitHub", command=opengitpage, width=30).pack(fill=tk.BOTH)
