@@ -72,7 +72,7 @@ Scrcpy Helper là một ứng dụng hỗ trợ sử dụng **scrcpy** trên Win
   - Điều kiện: Thiết bị phải cài đặt ứng dụng Shizuku
 
 #### 6. **Khởi động lại ADB Server**  
-- Nhấn **"Khởi động lại ADB Server"** để reset dịch vụ ADB.  
+- Nhấn **"Khởi động lại ADB Server"** để reset ADB Server 
 
 #### 7. **Thoát ứng dụng**  
 - Nhấn **"Thoát"** để đóng ứng dụng.  
